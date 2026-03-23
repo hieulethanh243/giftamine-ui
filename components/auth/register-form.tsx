@@ -21,35 +21,43 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { login } from "@/lib/api/auth";
+import { register } from "@/lib/api/auth";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/context/auth-context";
 import Link from "next/link";
 
 const schema = z.object({
+  name: z.string().min(2, "Tên tối thiểu 2 ký tự"),
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+  role: z.string().min(1, "Role là bắt buộc"),
 });
 
 type FormData = z.infer<typeof schema>;
 
-export function LoginForm() {
+export function RegisterForm() {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: "USER",
+    },
   });
   const router = useRouter();
   const { setCurrentUser } = useAuth();
 
   const onSubmit = async (data: FormData) => {
     try {
-      const response = await login(data);
+      const response = await register(data);
       const user = response.data.user;
       setCurrentUser(user);
-      toast.success("Đăng nhập thành công!");
-      router.push("/home"); // Redirect sau login thành công
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Đăng nhập thất bại!";
+      toast.success("Đăng ký thành công!");
+      router.push("/home"); // Redirect sau register thành công
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err.response?.data?.message || "Đăng ký thất bại!";
       toast.error(message);
     }
   };
@@ -58,12 +66,25 @@ export function LoginForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <div className="text-4xl mb-2">🎁</div>
-        <CardTitle>Chào mừng trở lại</CardTitle>
-        <CardDescription>Đăng nhập vào GiftAmino</CardDescription>
+        <CardTitle>Tạo tài khoản</CardTitle>
+        <CardDescription>Tham gia GiftAmino ngay</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Họ tên</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nguyễn Văn A" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="email"
@@ -91,14 +112,14 @@ export function LoginForm() {
               )}
             />
             <Button type="submit" className="w-full">
-              Đăng nhập
+              Đăng ký
             </Button>
           </form>
         </Form>
         <div className="mt-4 text-center text-sm">
-          <span className="text-gray-600">Chưa có tài khoản? </span>
-          <Link href="/register" className="text-primary hover:underline">
-            Đăng ký ngay
+          <span className="text-gray-600">Đã có tài khoản? </span>
+          <Link href="/login" className="text-primary hover:underline">
+            Đăng nhập
           </Link>
         </div>
       </CardContent>

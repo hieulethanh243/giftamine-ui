@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GiftItem } from "@/lib/api/gift-items";
 import { Heart, Trash2, ExternalLink, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 
 interface GiftItemCardProps {
   item: GiftItem;
@@ -22,106 +22,131 @@ export function GiftItemCard({
   isPurchasing,
   isDeleting,
 }: GiftItemCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const isPurchased = item.status === "PURCHASED";
 
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full">
-      {/* Image Container */}
-      <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
-        {item.imageUrl ? (
-          <Image
+    <div
+      className="relative overflow-hidden rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 bg-white group cursor-pointer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Image Container - Auto Height */}
+      <div className="relative w-full bg-gray-100 overflow-hidden">
+        {item.imageUrl && !imageError ? (
+          <img
             src={item.imageUrl}
             alt={item.name}
-            fill
-            loading="eager"
-            className="object-cover hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-300"
+            loading="lazy"
+            onError={handleImageError}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Heart className="w-12 h-12 text-gray-300" />
+          <div className="w-full aspect-square flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100">
+            <div className="text-center">
+              <div className="text-6xl font-bold text-gray-300 mb-2">404</div>
+              <Heart className="w-12 h-12 text-gray-300 mx-auto" />
+              <p className="text-sm text-gray-400 mt-2">Hình không tìm thấy</p>
+            </div>
           </div>
         )}
-        {isPurchased && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <CheckCircle2 className="w-12 h-12 text-white" />
-          </div>
-        )}
-        <Badge
-          variant={isPurchased ? "secondary" : "default"}
-          className="absolute top-2 right-2"
+
+        {/* Overlay - Show on Hover */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-between p-4 transition-opacity duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}
         >
-          {isPurchased ? "Đã mua" : "Còn"}
-        </Badge>
-      </div>
+          {/* Title & Price */}
+          <div className="flex-1 flex flex-col justify-end">
+            <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1">
+              {item.name}
+            </h3>
+            {item.price && (
+              <p className="text-white font-bold text-base">
+                {new Intl.NumberFormat("vi-VN", {
+                  style: "currency",
+                  currency: "VND",
+                }).format(item.price)}
+              </p>
+            )}
+          </div>
 
-      {/* Content */}
-      <CardContent className="flex-1 pt-4">
-        <h3 className="font-semibold text-lg mb-2 line-clamp-2">{item.name}</h3>
-        {item.notes && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-            {item.notes}
-          </p>
-        )}
+          {/* Actions - Show on Hover */}
+          <div className="flex gap-2 mt-3">
+            {item.url && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="flex-1 h-8 text-xs"
+                asChild
+              >
+                <a href={item.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3 h-3 mr-1" />
+                  Xem
+                </a>
+              </Button>
+            )}
+            {!isPurchased && (
+              <Button
+                size="sm"
+                className="flex-1 h-8 text-xs"
+                onClick={() => onPurchase?.(item.id)}
+                disabled={isPurchasing}
+              >
+                {isPurchasing ? "..." : "Mua"}
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-white hover:bg-white/20"
+                onClick={() => onDelete?.(item.id)}
+                disabled={isDeleting}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        </div>
 
-        {/* Price */}
-        {item.price && (
-          <div className="mb-3">
-            <p className="text-lg font-bold text-primary">
-              {new Intl.NumberFormat("vi-VN", {
-                style: "currency",
-                currency: "VND",
-              }).format(item.price)}
-            </p>
+        {/* Status Badge - Top Right */}
+        {isPurchased && (
+          <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+            <CheckCircle2 className="w-4 h-4 text-green-400" />
+            <span className="text-xs font-semibold text-white">Đã mua</span>
           </div>
         )}
+        {!isPurchased && (
+          <Badge
+            variant="secondary"
+            className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm border-0 text-white text-xs"
+          >
+            Còn
+          </Badge>
+        )}
 
-        {/* Purchased Info */}
+        {/* Purchased Info - Show when purchased */}
         {isPurchased && item.purchasedBy && (
-          <div className="bg-green-50 p-2 rounded-md mb-3">
-            <p className="text-xs text-gray-600">
-              Được mua bởi:{" "}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white text-xs">
+            <p className="line-clamp-1">
+              Mua bởi:{" "}
               <span className="font-semibold">{item.purchasedBy.name}</span>
             </p>
             {item.purchasedAt && (
-              <p className="text-xs text-gray-500">
+              <p className="text-white/70 text-xs">
                 {new Date(item.purchasedAt).toLocaleDateString("vi-VN")}
               </p>
             )}
           </div>
         )}
-      </CardContent>
-
-      {/* Actions */}
-      <CardFooter className="pt-0 gap-2">
-        {item.url && (
-          <Button variant="outline" size="sm" className="flex-1" asChild>
-            <a href={item.url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="w-4 h-4 mr-1" />
-              Xem
-            </a>
-          </Button>
-        )}
-        {!isPurchased && (
-          <Button
-            variant="default"
-            size="sm"
-            className="flex-1"
-            onClick={() => onPurchase?.(item.id)}
-            disabled={isPurchasing}
-          >
-            {isPurchasing ? "Đang..." : "Mua"}
-          </Button>
-        )}
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => onDelete?.(item.id)}
-          disabled={isDeleting}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

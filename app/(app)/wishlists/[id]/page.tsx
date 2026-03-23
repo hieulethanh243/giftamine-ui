@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/card";
 import { GiftItemCard } from "@/components/gift-item/gift-item-card";
 import { AddGiftItemDialog } from "@/components/gift-item/add-gift-item-dialog";
+import { ShareWishlistDialog } from "@/components/wishlist/share-wishlist-dialog";
 import { usePurchaseGiftItem, useDeleteGiftItem } from "@/lib/hooks/gift-items";
 import { getWishlist } from "@/lib/api/wishlists";
 import { isAuthenticated } from "@/lib/api/auth";
-import { ArrowLeft } from "lucide-react";
+import { getRandomGiftItem } from "@/lib/api/gift-items";
+import { ArrowLeft, Shuffle } from "lucide-react";
 
 export default function WishlistDetailPage() {
   const router = useRouter();
@@ -27,6 +29,8 @@ export default function WishlistDetailPage() {
   const [wishlist, setWishlist] = useState<any>(null);
   const [wishlistLoading, setWishlistLoading] = useState(true);
   const [wishlistError, setWishlistError] = useState<string | null>(null);
+  const [randomGiftItem, setRandomGiftItem] = useState<any>(null);
+  const [isGettingRandom, setIsGettingRandom] = useState(false);
 
   const purchaseGiftItem = usePurchaseGiftItem(wishlistId);
   const deleteGiftItem = useDeleteGiftItem(wishlistId);
@@ -78,6 +82,21 @@ export default function WishlistDetailPage() {
         const message = error.response?.data?.message || "Xóa thất bại!";
         toast.error(message);
       }
+    }
+  };
+
+  const handleGetRandomGiftItem = async () => {
+    try {
+      setIsGettingRandom(true);
+      const randomItem = await getRandomGiftItem(wishlistId);
+      setRandomGiftItem(randomItem);
+      toast.success("Đã chọn quà ngẫu nhiên!");
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || "Không thể lấy quà ngẫu nhiên!";
+      toast.error(message);
+    } finally {
+      setIsGettingRandom(false);
     }
   };
 
@@ -143,20 +162,26 @@ export default function WishlistDetailPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4 flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {wishlist.name}
-              </h1>
-              {wishlist.description && (
-                <p className="text-gray-600 text-sm mt-1">
-                  {wishlist.description}
-                </p>
-              )}
+          <div className="py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {wishlist.name}
+                </h1>
+                {wishlist.description && (
+                  <p className="text-gray-600 text-sm mt-1">
+                    {wishlist.description}
+                  </p>
+                )}
+              </div>
             </div>
+            <ShareWishlistDialog
+              wishlistId={wishlistId}
+              wishlistName={wishlist.name}
+            />
           </div>
         </div>
       </header>
@@ -200,24 +225,63 @@ export default function WishlistDetailPage() {
         {/* Add Gift Item Button */}
         <div className="mb-8 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900">Danh sách quà</h2>
-          <AddGiftItemDialog
-            wishlistId={wishlistId}
-            onGiftAdded={fetchWishlist}
-          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleGetRandomGiftItem}
+              disabled={isGettingRandom || !wishlist?.giftItems?.length}
+            >
+              <Shuffle className="w-4 h-4 mr-2" />
+              {isGettingRandom ? "Đang chọn..." : "Random quà"}
+            </Button>
+            <AddGiftItemDialog
+              wishlistId={wishlistId}
+              onGiftAdded={fetchWishlist}
+            />
+          </div>
         </div>
 
-        {/* Gift Items Grid */}
-        {wishlist?.giftItems && wishlist?.giftItems.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {wishlist?.giftItems.map((item: any) => (
+        {/* Random Gift Item */}
+        {randomGiftItem && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Shuffle className="w-5 h-5 mr-2 text-purple-600" />
+                Quà ngẫu nhiên được chọn
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRandomGiftItem(null)}
+              >
+                Ẩn
+              </Button>
+            </div>
+            <div className="max-w-md">
               <GiftItemCard
-                key={item.id}
-                item={item}
+                item={randomGiftItem}
                 onPurchase={handlePurchaseGiftItem}
                 onDelete={handleDeleteGiftItem}
                 isPurchasing={purchaseGiftItem.isPending}
                 isDeleting={deleteGiftItem.isPending}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Gift Items Grid - Pinterest Style */}
+        {wishlist?.giftItems && wishlist?.giftItems.length > 0 ? (
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
+            {wishlist?.giftItems.map((item: any) => (
+              <div key={item.id} className="break-inside-avoid mb-6">
+                <GiftItemCard
+                  item={item}
+                  onPurchase={handlePurchaseGiftItem}
+                  onDelete={handleDeleteGiftItem}
+                  isPurchasing={purchaseGiftItem.isPending}
+                  isDeleting={deleteGiftItem.isPending}
+                />
+              </div>
             ))}
           </div>
         ) : (

@@ -7,9 +7,10 @@ export interface LoginData {
 }
 
 export interface RegisterData {
+  name: string;
   email: string;
   password: string;
-  // Thêm các field khác nếu cần
+  role: string;
 }
 
 export interface AuthResponse {
